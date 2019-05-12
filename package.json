@@ -37,13 +37,13 @@
   },
   "homepage": "https://github.com/rdmtc/node-red-contrib-johnny-five",
   "dependencies": {
-    "firmata": "^0.19.1",
-    "johnny-five": "^0.13.0",
+    "firmata": "^2.0.0",
+    "johnny-five": "^1.1.0",
     "lodash": "^4.17.5",
     "mqtt": "^2.15.2",
     "mqtt-serial": "^0.6.0",
     "node-led": "^0.3.1",
-    "serialport": "^6.0.5",
+    "serialport": "^7.1.5",
     "socket.io-serial": "^0.4.0",
     "udp-serial": "^0.2.0"
   },
