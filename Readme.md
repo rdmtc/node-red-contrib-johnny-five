@@ -7,7 +7,7 @@ A set of input and output nodes for controlling General Purpose Input and Output
 
 From inside your node-red directory:
 ```
-npm install node-red-contrib-gpio
+npm install node-red-contrib-johnny-five
 ```
 
 ## Control I/O for Analog, Digital, PWM and Servos
@@ -32,7 +32,7 @@ return msg;
 
 ## Supported Hardware
 
-node-red-contrib-gpio supports several johnny-five I/O classes:
+node-red-contrib-johnny-five supports several johnny-five I/O classes:
 
 | Device | IO Plugin |
 |----------|-------------|
