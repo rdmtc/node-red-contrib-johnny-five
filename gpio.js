@@ -39,7 +39,7 @@ function ioErrorStatus(n, err) {
 }
 
 function connectedStatus(n) {
-    n.status({fill: 'green', shape: 'dot', text: 'connected !!!! '});
+    n.status({fill: 'green', shape: 'dot', text: 'connected'});
 }
 
 function init(RED) {
