@@ -53,10 +53,35 @@
     }
   },
   "devDependencies": {
+    "eslint-plugin-html": "^5.0.3",
     "xo": "^0.24.0"
   },
   "scripts": {
     "test": "xo",
     "lintfix": "xo --fix"
+  },
+  "xo": {
+    "space": 4,
+    "plugin": "html",
+    "global": [
+      "$",
+      "RED"
+    ],
+    "extensions": [
+      "js",
+      "html"
+    ],
+    "rules": {
+      "no-template-curly-in-string": "warn",
+      "camelcase": "warn",
+      "capitalized-comments": 0,
+      "spaced-comment": 0,
+      "unicorn/catch-error-name": 0,
+      "valid-jsdoc": 0,
+      "eslint-comments/no-unused-disable": 0,
+      "promise/prefer-await-to-then": 0,
+      "prefer-object-spread": 0
+    },
+    "ignore": []
   }
 }
