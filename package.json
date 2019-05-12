@@ -3,8 +3,8 @@
   "version": "0.15.0",
   "description": "A set of node-red nodes for using johnny-five and IO plugins",
   "main": "gpio.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "engines": {
+    "node": ">=8.0.0"
   },
   "repository": {
     "type": "git",
@@ -51,5 +51,12 @@
     "nodes": {
       "gpio": "gpio.js"
     }
+  },
+  "devDependencies": {
+    "xo": "^0.24.0"
+  },
+  "scripts": {
+    "test": "xo",
+    "lintfix": "xo --fix"
   }
 }

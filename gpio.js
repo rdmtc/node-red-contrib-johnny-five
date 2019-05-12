@@ -13,480 +13,488 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 */
 
-var serialport = require('serialport');
-var createNodebotNode = require('./lib/nodebotNode');
+const vm = require('vm');
+const util = require('util');
+const five = require('johnny-five');
+const serialport = require('serialport');
+const NodeLed = require('node-led');
+const _ = require('lodash');
+const createNodebotNode = require('./lib/nodebotNode');
 
-var five = require('johnny-five');
-var vm = require('vm');
-var util = require('util');
-var NodeLed = require('node-led');
-var _ = require('lodash');
-
-function connectingStatus(n){
-  n.status({fill:"red",shape:"ring",text:"connecting ... "});
+function connectingStatus(n) {
+	n.status({fill: 'red', shape: 'ring', text: 'connecting ... '});
 }
 
-function networkReadyStatus(n){
-  n.status({fill:"yellow",shape:"ring",text:"connecting..."});
+function networkReadyStatus(n) {
+	n.status({fill: 'yellow', shape: 'ring', text: 'connecting...'});
 }
 
-function networkErrorStatus(n){
-  n.status({fill:"red",shape:"dot",text:"disconnected"});
+function networkErrorStatus(n) {
+	n.status({fill: 'red', shape: 'dot', text: 'disconnected'});
 }
 
-function ioErrorStatus(n, err){
-  n.status({fill:"red",shape:"dot",text:"error"});
-  n.warn(err);
+function ioErrorStatus(n, err) {
+	n.status({fill: 'red', shape: 'dot', text: 'error'});
+	n.warn(err);
 }
 
-function connectedStatus(n){
-  n.status({fill:"green",shape:"dot",text:"connected !!!! "});
+function connectedStatus(n) {
+	n.status({fill: 'green', shape: 'dot', text: 'connected !!!! '});
 }
-
 
 function init(RED) {
+	createNodebotNode(RED);
 
-  createNodebotNode(RED);
+	function gpioInNode(n) {
+		RED.nodes.createNode(this, n);
+		this.buttonState = -1;
+		this.pin = n.pin;
+		this.state = n.state;
+		this.nodebot = RED.nodes.getNode(n.board);
+		if (typeof this.nodebot === 'object') {
+			const node = this;
+			connectingStatus(node);
 
-  function gpioInNode(n) {
-    RED.nodes.createNode(this,n);
-    this.buttonState = -1;
-    this.pin = n.pin;
-    this.state = n.state;
-    this.nodebot = RED.nodes.getNode(n.board);
-    if (typeof this.nodebot === "object") {
+			node.nodebot.on('ioready', () => {
+				const {io} = node.nodebot;
 
-      var node = this;
-      connectingStatus(node);
+				connectedStatus(node);
+				if (node.state == 'ANALOG') {
+					const samplingInterval = parseInt(n.samplingInterval, 10) || 300;
+					try {
+						io.setSamplingInterval(samplingInterval);
+					} catch (error) {
+						console.log(error);
+					}
 
-      node.nodebot.on('ioready', function() {
-        var io = node.nodebot.io;
+					try {
+						io.pinMode(node.pin, io.MODES.ANALOG);
+					} catch (error) {
+						console.log(error);
+					}
 
-        connectedStatus(node);
-        if (node.state == "ANALOG") {
-          var samplingInterval = parseInt(n.samplingInterval, 10) || 300;
-          try{io.setSamplingInterval(samplingInterval);}catch(exp){ console.log(exp); }
-          try{io.pinMode(node.pin, io.MODES.ANALOG);}catch(exp){ console.log(exp); }
-          io.analogRead(node.pin, function(data) {
-            var msg = {payload:data, topic:node.pin};
-            node.send(msg);
-          });
-        }
-        else if (node.state == "PULLUP") {
-          try{io.pinMode(node.pin, io.MODES.PULLUP);}catch(exp){ console.log(exp); }
-            io.digitalRead(node.pin, function(data) {
-            var msg = {payload:data, topic:node.pin};
-            node.send(msg);
-          });
-        }
-        else {
-          try{io.pinMode(node.pin, io.MODES.INPUT);}catch(exp){ console.log(exp); }
-            io.digitalRead(node.pin, function(data) {
-            var msg = {payload:data, topic:node.pin};
-            node.send(msg);
-          });
-        }
-      });
-      node.nodebot.on('networkReady', function(){
-        networkReadyStatus(node);
-      });
-      node.nodebot.on('networkError', function(){
-        networkErrorStatus(node);
-      });
-      node.nodebot.on('ioError', function(err){
-        ioErrorStatus(node, err);
-      });
-    }
-    else {
-      this.warn("nodebot not configured");
-    }
-  }
-  RED.nodes.registerType("gpio in",gpioInNode);
+					io.analogRead(node.pin, data => {
+						const msg = {payload: data, topic: node.pin};
+						node.send(msg);
+					});
+				} else if (node.state == 'PULLUP') {
+					try {
+						io.pinMode(node.pin, io.MODES.PULLUP);
+					} catch (error) {
+						console.log(error);
+					}
 
-  function gpioOutNode(n) {
-    RED.nodes.createNode(this,n);
-    this.buttonState = -1;
-    this.pin = n.pin;
-    this.state = n.state;
-    this.arduino = n.arduino;
-    this.nodebot = RED.nodes.getNode(n.board);
-    this.i2cAddress = parseInt(n.i2cAddress, 10);
-    this.i2cRegister = parseInt(n.i2cRegister, 10);
-    if (typeof this.nodebot === "object") {
-        var node = this;
-        connectingStatus(node);
+					io.digitalRead(node.pin, data => {
+						const msg = {payload: data, topic: node.pin};
+						node.send(msg);
+					});
+				} else {
+					try {
+						io.pinMode(node.pin, io.MODES.INPUT);
+					} catch (error) {
+						console.log(error);
+					}
 
-        node.nodebot.on('ioready', function() {
+					io.digitalRead(node.pin, data => {
+						const msg = {payload: data, topic: node.pin};
+						node.send(msg);
+					});
+				}
+			});
+			node.nodebot.on('networkReady', () => {
+				networkReadyStatus(node);
+			});
+			node.nodebot.on('networkError', () => {
+				networkErrorStatus(node);
+			});
+			node.nodebot.on('ioError', err => {
+				ioErrorStatus(node, err);
+			});
+		} else {
+			this.warn('nodebot not configured');
+		}
+	}
 
-            connectedStatus(node);
+	RED.nodes.registerType('gpio in', gpioInNode);
 
-            node.on('input', function(msg) {
-              try{
-                var state = msg.state || node.state;
-                var io = node.nodebot.io;
-                if (state === 'OUTPUT') {
-                  try{io.pinMode(node.pin, io.MODES[state]);}catch(exp){ console.log(exp); }
-                  if ((msg.payload == true)||(msg.payload == 1)||(msg.payload.toString().toLowerCase() === "on")) {
-                      io.digitalWrite(node.pin, 1);
-                  }
-                  if ((msg.payload == false)||(msg.payload == 0)||(msg.payload.toString().toLowerCase() === "off")) {
-                      io.digitalWrite(node.pin, 0);
-                  }
-                }
-                else if (state === 'PWM') {
-                  try{io.pinMode(node.pin, io.MODES[state]);}catch(exp){ console.log(exp); }
-                  msg.payload = msg.payload * 1;
-                  if ((msg.payload >= 0) && (msg.payload <= 255)) {
-                      //console.log(msg.payload, node.pin);
-                      io.analogWrite(node.pin, msg.payload);
-                  }
-                }
-                else if (state === 'SERVO') {
-                  try{io.pinMode(node.pin, io.MODES[state]);}catch(exp){ console.log(exp); }
-                  msg.payload = msg.payload * 1;
-                  if ((msg.payload >= 0) && (msg.payload <= 180)) {
-                      //console.log(msg.payload, node.pin);
-                      io.servoWrite(node.pin, msg.payload);
-                  }
-                }
-                else if(node.state === 'I2C_READ_REQUEST'){
-                  var register = parseInt(msg.i2cRegister, 10) || parseInt(node.i2cRegister, 10);
-                  var i2cAddress = parseInt(msg.i2cAddress, 10) || parseInt(node.i2cAddress, 10);
-                  var numBytes = parseInt(msg.payload, 10);
-                  if(io.i2cReadOnce && i2cAddress && numBytes){
-                    if(register){
-                      io.i2cReadOnce(i2cAddress, register, numBytes, function(data){
-                        node.send({
-                          payload: data,
-                          register: register,
-                          i2cAddress: i2cAddress,
-                          numBytes: numBytes
-                        });
-                      });
-                    }else{
-                      io.i2cReadOnce(i2cAddress, numBytes, function(data){
-                        node.send({
-                          payload: data,
-                          i2cAddress: i2cAddress,
-                          numBytes: numBytes
-                        });
-                      });
-                    }
-                  }
-                }
-                else if(node.state === 'I2C_WRITE_REQUEST'){
-                  var register = parseInt(msg.i2cRegister, 10) || parseInt(node.i2cRegister, 10);
-                  var i2cAddress = parseInt(msg.i2cAddress, 10) || parseInt(node.i2cAddress, 10);
-                  if(io.i2cWrite && i2cAddress && msg.payload){
-                    if(register){
-                      io.i2cWrite(i2cAddress, register, msg.payload);
-                    }else{
-                      io.i2cWrite(i2cAddress, msg.payload);
-                    }
-                  }
-                }
-                else if(node.state === 'I2C_DELAY'){
-                  if(io.i2cConfig){
-                    if(register){
-                      io.i2cConfig(parseInt(msg.payload, 10));
-                    }
-                  }
-                }
-              }
-              catch(inputExp){
-                node.warn(inputExp);
-              }
-            });
-        });
-        node.nodebot.on('networkReady', function(){
-          networkReadyStatus(node);
-        });
-        node.nodebot.on('networkError', function(){
-          networkErrorStatus(node);
-        });
-        node.nodebot.on('ioError', function(err){
-          ioErrorStatus(node, err);
-        });
-    }
-    else {
-        this.warn("nodebot not configured");
-    }
+	function gpioOutNode(n) {
+		RED.nodes.createNode(this, n);
+		this.buttonState = -1;
+		this.pin = n.pin;
+		this.state = n.state;
+		this.arduino = n.arduino;
+		this.nodebot = RED.nodes.getNode(n.board);
+		this.i2cAddress = parseInt(n.i2cAddress, 10);
+		this.i2cRegister = parseInt(n.i2cRegister, 10);
+		if (typeof this.nodebot === 'object') {
+			const node = this;
+			connectingStatus(node);
 
-  }
+			node.nodebot.on('ioready', () => {
+				connectedStatus(node);
 
-  RED.nodes.registerType("gpio out",gpioOutNode);
+				node.on('input', msg => {
+					try {
+						const state = msg.state || node.state;
+						const {io} = node.nodebot;
+						if (state === 'OUTPUT') {
+							try {
+								io.pinMode(node.pin, io.MODES[state]);
+							} catch (error) {
+								console.log(error);
+							}
 
+							if ((msg.payload == true) || (msg.payload == 1) || (msg.payload.toString().toLowerCase() === 'on')) {
+								io.digitalWrite(node.pin, 1);
+							}
 
-  function nodeLedNode(n) {
-    RED.nodes.createNode(this,n);
-    this.buttonState = -1;
-    this.address = Number(n.address);
-    this.mode = n.mode;
-    this.arduino = n.arduino;
-    this.nodebot = RED.nodes.getNode(n.board);
-    if (typeof this.nodebot === "object") {
-        var node = this;
-        connectingStatus(node);
+							if ((msg.payload == false) || (msg.payload == 0) || (msg.payload.toString().toLowerCase() === 'off')) {
+								io.digitalWrite(node.pin, 0);
+							}
+						} else if (state === 'PWM') {
+							try {
+								io.pinMode(node.pin, io.MODES[state]);
+							} catch (error) {
+								console.log(error);
+							}
 
-        node.nodebot.on('ioready', function() {
-            node.comp =  new NodeLed[node.mode](node.nodebot.io, {address: node.address});
-            connectedStatus(node);
+							msg.payload = Number(msg.payload);
+							if ((msg.payload >= 0) && (msg.payload <= 255)) {
+								// Console.log(msg.payload, node.pin);
+								io.analogWrite(node.pin, msg.payload);
+							}
+						} else if (state === 'SERVO') {
+							try {
+								io.pinMode(node.pin, io.MODES[state]);
+							} catch (error) {
+								console.log(error);
+							}
 
-            node.on('input', function(msg) {
-              try{
+							msg.payload = Number(msg.payload);
+							if ((msg.payload >= 0) && (msg.payload <= 180)) {
+								// Console.log(msg.payload, node.pin);
+								io.servoWrite(node.pin, msg.payload);
+							}
+						} else if (node.state === 'I2C_READ_REQUEST') {
+							var register = parseInt(msg.i2cRegister, 10) || parseInt(node.i2cRegister, 10);
+							var i2cAddress = parseInt(msg.i2cAddress, 10) || parseInt(node.i2cAddress, 10);
+							const numBytes = parseInt(msg.payload, 10);
+							if (io.i2cReadOnce && i2cAddress && numBytes) {
+								if (register) {
+									io.i2cReadOnce(i2cAddress, register, numBytes, data => {
+										node.send({
+											payload: data,
+											register,
+											i2cAddress,
+											numBytes
+										});
+									});
+								} else {
+									io.i2cReadOnce(i2cAddress, numBytes, data => {
+										node.send({
+											payload: data,
+											i2cAddress,
+											numBytes
+										});
+									});
+								}
+							}
+						} else if (node.state === 'I2C_WRITE_REQUEST') {
+							var register = parseInt(msg.i2cRegister, 10) || parseInt(node.i2cRegister, 10);
+							var i2cAddress = parseInt(msg.i2cAddress, 10) || parseInt(node.i2cAddress, 10);
+							if (io.i2cWrite && i2cAddress && msg.payload) {
+								if (register) {
+									io.i2cWrite(i2cAddress, register, msg.payload);
+								} else {
+									io.i2cWrite(i2cAddress, msg.payload);
+								}
+							}
+						} else if (node.state === 'I2C_DELAY') {
+							if (io.i2cConfig) {
+								if (register) {
+									io.i2cConfig(parseInt(msg.payload, 10));
+								}
+							}
+						}
+					} catch (error) {
+						node.warn(error);
+					}
+				});
+			});
+			node.nodebot.on('networkReady', () => {
+				networkReadyStatus(node);
+			});
+			node.nodebot.on('networkError', () => {
+				networkErrorStatus(node);
+			});
+			node.nodebot.on('ioError', err => {
+				ioErrorStatus(node, err);
+			});
+		} else {
+			this.warn('nodebot not configured');
+		}
+	}
 
-                if(node.mode === 'AlphaNum4' || node.mode === 'SevenSegment'){
-                  node.comp.writeText(msg.payload);
-                }
-                else{
-                  node.comp.drawBitmap(msg.payload);
-                }
-              }
-              catch(inputExp){
-                node.warn(inputExp);
-              }
-            });
-        });
-        node.nodebot.on('networkReady', function(){
-          networkReadyStatus(node);
-        });
-        node.nodebot.on('networkError', function(){
-          networkErrorStatus(node);
-        });
-        node.nodebot.on('ioError', function(err){
-          ioErrorStatus(node, err);
-        });
-    }
-    else {
-        this.warn("nodebot not configured");
-    }
+	RED.nodes.registerType('gpio out', gpioOutNode);
 
-  }
+	function nodeLedNode(n) {
+		RED.nodes.createNode(this, n);
+		this.buttonState = -1;
+		this.address = Number(n.address);
+		this.mode = n.mode;
+		this.arduino = n.arduino;
+		this.nodebot = RED.nodes.getNode(n.board);
+		if (typeof this.nodebot === 'object') {
+			const node = this;
+			connectingStatus(node);
 
-  RED.nodes.registerType("node-led",nodeLedNode);
+			node.nodebot.on('ioready', () => {
+				node.comp = new NodeLed[node.mode](node.nodebot.io, {address: node.address});
+				connectedStatus(node);
 
+				node.on('input', msg => {
+					try {
+						if (node.mode === 'AlphaNum4' || node.mode === 'SevenSegment') {
+							node.comp.writeText(msg.payload);
+						} else {
+							node.comp.drawBitmap(msg.payload);
+						}
+					} catch (error) {
+						node.warn(error);
+					}
+				});
+			});
+			node.nodebot.on('networkReady', () => {
+				networkReadyStatus(node);
+			});
+			node.nodebot.on('networkError', () => {
+				networkErrorStatus(node);
+			});
+			node.nodebot.on('ioError', err => {
+				ioErrorStatus(node, err);
+			});
+		} else {
+			this.warn('nodebot not configured');
+		}
+	}
 
-  function handleRoute(req, res, handler){
-    handler(req.query)
-      .then(function(data){
-        res.send(data);
-      }, function(err){
-        console.log('error in gpio request', err);
-        res.send(500);
-      });
-  }
+	RED.nodes.registerType('node-led', nodeLedNode);
 
-  function listArduinoPorts(callback) {
-      return serialport.list(function(err, ports) {
-        if (err) {
-          return callback(err);
-        }
-        var devices = [];
-        for (var i = 0; i < ports.length; i++) {
-          if (/usb|acm|com\d+/i.test(ports[i].comName)) {
-            devices.push(ports[i].comName);
-          }
-        }
-        return callback(null, devices);
-      });
-  }
+	function handleRoute(req, res, handler) {
+		handler(req.query)
+			.then(data => {
+				res.send(data);
+			}, err => {
+				console.log('error in gpio request', err);
+				res.send(500);
+			});
+	}
 
+	function listArduinoPorts(callback) {
+		return serialport.list((err, ports) => {
+			if (err) {
+				return callback(err);
+			}
 
-  function johnny5Node(n) {
-    RED.nodes.createNode(this,n);
+			const devices = [];
+			for (let i = 0; i < ports.length; i++) {
+				if (/usb|acm|com\d+/i.test(ports[i].comName)) {
+					devices.push(ports[i].comName);
+				}
+			}
 
-    // console.log('initializing johnny5Node', n);
-    this.nodebot = RED.nodes.getNode(n.board);
-    this.func = n.func;
-    var node = this;
+			return callback(null, devices);
+		});
+	}
 
+	function johnny5Node(n) {
+		RED.nodes.createNode(this, n);
 
-    if (typeof this.nodebot === "object") {
-        process.nextTick(function(){
-          connectingStatus(node);
-        });
+		// Console.log('initializing johnny5Node', n);
+		this.nodebot = RED.nodes.getNode(n.board);
+		this.func = n.func;
+		const node = this;
 
-        // console.log('launching johnny5Node', n);
-        node.nodebot.on('ioready', function() {
-          // console.log('launching johnny5Node ioready', n);
-            connectedStatus(node);
+		if (typeof this.nodebot === 'object') {
+			process.nextTick(() => {
+				connectingStatus(node);
+			});
 
-            function sendResults(node,msgs) {
-                var _msgid = (1 + Math.random() * 4294967295).toString(16);
-                if (msgs == null) {
-                    return;
-                } else if (!util.isArray(msgs)) {
-                    msgs = [msgs];
-                }
-                var msgCount = 0;
-                for (var m=0;m<msgs.length;m++) {
-                    if (msgs[m]) {
-                        if (util.isArray(msgs[m])) {
-                            for (var n=0; n < msgs[m].length; n++) {
-                                msgs[m][n]._msgid = _msgid;
-                                msgCount++;
-                            }
-                        } else {
-                            msgs[m]._msgid = _msgid;
-                            msgCount++;
-                        }
-                    }
-                }
-                if (msgCount>0) {
-                    node.send(msgs);
-                }
-            }
+			// Console.log('launching johnny5Node', n);
+			node.nodebot.on('ioready', function () {
+				// Console.log('launching johnny5Node ioready', n);
+				connectedStatus(node);
 
-            var functionText = "var results = null;"+
-                   "results = (function(){ "+
-                      "var node = {"+
-                         "log:__node__.log,"+
-                         "error:__node__.error,"+
-                         "warn:__node__.warn,"+
-                         "on:__node__.on,"+
-                         "status:__node__.status,"+
-                         "send:function(msgs){ __node__.send(msgs);}"+
-                      "};\n"+
-                      node.func+"\n"+
-                   "})();";
+				function sendResults(node, msgs) {
+					const _msgid = (1 + Math.random() * 4294967295).toString(16);
+					if (msgs == null) {
+						return;
+					}
 
-            var sandbox = {
-                console:console,
-                util:util,
-                Buffer:Buffer,
-                __node__: {
-                    log: function() {
-                        node.log.apply(node, arguments);
-                    },
-                    error: function() {
-                        node.error.apply(node, arguments);
-                    },
-                    warn: function() {
-                        node.warn.apply(node, arguments);
-                    },
-                    send: function(msgs) {
-                        sendResults(node, msgs);
-                    },
-                    on: function() {
-                        node.on.apply(node, arguments);
-                    },
-                    status: function() {
-                        node.status.apply(node, arguments);
-                    }
-                },
-                context: {
-                    set: function () {
-                        return node.context().set.apply(node, arguments);
-                    },
-                    get: function () {
-                        return node.context().get.apply(node, arguments);
-                    },
-                    get global() {
-                        return node.context().global;
-                    },
-                    get flow() {
-                        return node.context().flow;
-                    }
-                },
-                flow: {
-                    set: function () {
-                        node.context().flow.set.apply(node, arguments);
-                    },
-                    get: function () {
-                        return node.context().flow.get.apply(node, arguments);
-                    }
-                },
-                global: {
-                    set: function () {
-                        node.context().global.set.apply(node, arguments);
-                    },
-                    get: function () {
-                        return node.context().global.get.apply(node, arguments);
-                    }
-                },
-                setTimeout: setTimeout,
-                clearTimeout: clearTimeout,
-                _:_,
-                five: five,
-                board: node.nodebot.board,
-                boardModule: node.nodebot.boardModule,
-                RED: RED,
-                require: require
+					if (!util.isArray(msgs)) {
+						msgs = [msgs];
+					}
 
-            };
-            var context = vm.createContext(sandbox);
+					let msgCount = 0;
+					for (let m = 0; m < msgs.length; m++) {
+						if (msgs[m]) {
+							if (util.isArray(msgs[m])) {
+								for (let n = 0; n < msgs[m].length; n++) {
+									msgs[m][n]._msgid = _msgid;
+									msgCount++;
+								}
+							} else {
+								msgs[m]._msgid = _msgid;
+								msgCount++;
+							}
+						}
+					}
 
+					if (msgCount > 0) {
+						node.send(msgs);
+					}
+				}
 
-            try {
-              node.script = vm.createScript(functionText);
-              try {
-                  var start = Date.now(); //process.hrtime();
-                  //context.msg = msg;
-                  node.script.runInContext(context);
-                  // console.log('ran script', context);
+				const functionText = 'var results = null;' +
+                   'results = (function(){ ' +
+                      'var node = {' +
+                         'log:__node__.log,' +
+                         'error:__node__.error,' +
+                         'warn:__node__.warn,' +
+                         'on:__node__.on,' +
+                         'status:__node__.status,' +
+                         'send:function(msgs){ __node__.send(msgs);}' +
+                      '};\n' +
+                      node.func + '\n' +
+                   '})();';
 
-              } catch(err) {
+				const sandbox = {
+					console,
+					util,
+					Buffer,
+					__node__: {
+						log() {
+							node.log.apply(node, arguments);
+						},
+						error() {
+							node.error.apply(node, arguments);
+						},
+						warn() {
+							node.warn.apply(node, arguments);
+						},
+						send(msgs) {
+							sendResults(node, msgs);
+						},
+						on() {
+							node.on.apply(node, arguments);
+						},
+						status() {
+							node.status.apply(node, arguments);
+						}
+					},
+					context: {
+						set() {
+							return node.context().set.apply(node, arguments);
+						},
+						get() {
+							return node.context().get.apply(node, arguments);
+						},
+						get global() {
+							return node.context().global;
+						},
+						get flow() {
+							return node.context().flow;
+						}
+					},
+					flow: {
+						set() {
+							node.context().flow.set.apply(node, arguments);
+						},
+						get() {
+							return node.context().flow.get.apply(node, arguments);
+						}
+					},
+					global: {
+						set() {
+							node.context().global.set.apply(node, arguments);
+						},
+						get() {
+							return node.context().global.get.apply(node, arguments);
+						}
+					},
+					setTimeout,
+					clearTimeout,
+					_,
+					five,
+					board: node.nodebot.board,
+					boardModule: node.nodebot.boardModule,
+					RED,
+					require
 
-                  var line = 0;
-                  var errorMessage;
-                  var stack = err.stack.split(/\r?\n/);
-                  if (stack.length > 0) {
-                      while (line < stack.length && stack[line].indexOf("ReferenceError") !== 0) {
-                          line++;
-                      }
+				};
+				const context = vm.createContext(sandbox);
 
-                      if (line < stack.length) {
-                          errorMessage = stack[line];
-                          var m = /:(\d+):(\d+)$/.exec(stack[line+1]);
-                          if (m) {
-                              var lineno = Number(m[1])-1;
-                              var cha = m[2];
-                              errorMessage += " (line "+lineno+", col "+cha+")";
-                          }
-                      }
-                  }
-                  if (!errorMessage) {
-                      errorMessage = err.toString();
-                  }
-                  this.error(errorMessage);
-              }
+				try {
+					node.script = vm.createScript(functionText);
+					try {
+						const start = Date.now(); // Process.hrtime();
+						// context.msg = msg;
+						node.script.runInContext(context);
+						// Console.log('ran script', context);
+					} catch (error) {
+						let line = 0;
+						let errorMessage;
+						const stack = error.stack.split(/\r?\n/);
+						if (stack.length > 0) {
+							while (line < stack.length && stack[line].indexOf('ReferenceError') !== 0) {
+								line++;
+							}
 
-          } catch(err) {
-              // eg SyntaxError - which v8 doesn't include line number information
-              // so we can't do better than this
-              this.error(err);
-          }
+							if (line < stack.length) {
+								errorMessage = stack[line];
+								const m = /:(\d+):(\d+)$/.exec(stack[line + 1]);
+								if (m) {
+									const lineno = Number(m[1]) - 1;
+									const cha = m[2];
+									errorMessage += ' (line ' + lineno + ', col ' + cha + ')';
+								}
+							}
+						}
 
+						if (!errorMessage) {
+							errorMessage = error.toString();
+						}
 
+						this.error(errorMessage);
+					}
+				} catch (error) {
+					// Eg SyntaxError - which v8 doesn't include line number information
+					// so we can't do better than this
+					this.error(error);
+				}
+			});
+			node.nodebot.on('networkReady', () => {
+				networkReadyStatus(node);
+			});
+			node.nodebot.on('networkError', () => {
+				networkErrorStatus(node);
+			});
+			node.nodebot.on('ioError', err => {
+				ioErrorStatus(node, err);
+			});
+		} else {
+			this.warn('nodebot not configured');
+		}
+	}
 
+	RED.nodes.registerType('johnny5', johnny5Node);
 
-        });
-        node.nodebot.on('networkReady', function(){
-          networkReadyStatus(node);
-        });
-        node.nodebot.on('networkError', function(){
-          networkErrorStatus(node);
-        });
-        node.nodebot.on('ioError', function(err){
-          ioErrorStatus(node, err);
-        });
-    }
-    else {
-        this.warn("nodebot not configured");
-    }
-
-  }
-
-  RED.nodes.registerType("johnny5",johnny5Node);
-
-
-  //routes
-  RED.httpAdmin.get("/gpioserialports", RED.auth.needsPermission("arduino.read"), function(req,res) {
-     listArduinoPorts(function (err, ports) {
-          res.json(ports);
-      });
-  });
-
+	// Routes
+	RED.httpAdmin.get('/gpioserialports', RED.auth.needsPermission('arduino.read'), (req, res) => {
+		listArduinoPorts((err, ports) => {
+			res.json(ports);
+		});
+	});
 }
 
 module.exports = init;
