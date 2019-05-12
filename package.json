@@ -28,6 +28,10 @@
   ],
   "author": "Luis Montes",
   "license": "MIT",
+  "contributors": [
+    "Sebastian Raff <hobbyquaker@gmail.com>",
+    "Petapton https://github.com/Petapton"
+  ],
   "bugs": {
     "url": "https://github.com/rdmtc/node-red-contrib-johnny-five/issues"
   },
