@@ -1,6 +1,6 @@
 {
-  "name": "node-red-contrib-gpio",
-  "version": "0.14.0",
+  "name": "node-red-contrib-johnny-five",
+  "version": "0.15.0",
   "description": "A set of node-red nodes for using johnny-five and IO plugins",
   "main": "gpio.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:monteslu/node-red-contrib-gpio.git"
+    "url": "git@github.com:rdmtc/node-red-contrib-johnny-five.git"
   },
   "keywords": [
     "gpio",
@@ -29,9 +29,9 @@
   "author": "Luis Montes",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/monteslu/node-red-contrib-gpio/issues"
+    "url": "https://github.com/rdmtc/node-red-contrib-johnny-five/issues"
   },
-  "homepage": "https://github.com/monteslu/node-red-contrib-gpio",
+  "homepage": "https://github.com/rdmtc/node-red-contrib-johnny-five",
   "dependencies": {
     "firmata": "^0.19.1",
     "johnny-five": "^0.13.0",
