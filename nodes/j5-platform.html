@@ -1,0 +1,314 @@
+<script type="text/javascript">
+    RED.nodes.registerType('j5-platform', {
+        category: 'config',
+        defaults: {
+            name: {value: '', required: false},
+            username: {value: '', required: false},
+            password: {value: '', required: false},
+            ioPlugin: {value: 'firmata', required: true},
+            serialportName: {value: '', required: false},
+            connectionType: {value: 'local', required: false},
+            mqttServer: {value: '', required: false},
+            socketServer: {value: '', required: false},
+            pubTopic: {value: '', required: false},
+            subTopic: {value: '', required: false},
+            tcpHost: {value: '', required: false},
+            tcpPort: {value: '', required: false},
+            sparkId: {value: '', required: false},
+            sparkToken: {value: '', required: false},
+            beanId: {value: '', required: false},
+            impId: {value: '', required: false},
+            uuid: {value: '', required: false},
+            token: {value: '', required: false},
+            sendUuid: {value: '', required: false},
+            raspiI2C: {value: false},
+            raspiUART: {value: false},
+            raspiGPIO: {value: []}
+        },
+        label() {
+            return this.name || this.ioPlugin;
+        },
+        oneditprepare(a) {
+            const self = this;
+
+            $.getJSON('johnny5/io-plugins', data => {
+                data.forEach(plugin => {
+                    const selected = plugin === this.ioPlugin ? ' selected' : '';
+                    $('#node-config-input-ioPlugin').append(`<option value="${plugin}"${selected}>${plugin}</option>`);
+                });
+            });
+
+            if (this.raspiGPIO) {
+                this.raspiGPIO.forEach(gpio => {
+                    $('.raspi-gpio[data-gpio="' + gpio + '"]').attr('checked', true);
+                });
+            }
+
+            const boardRows = ['firmata', 'bean', 'spark', 'imp'];
+            const boardToggles = {
+                firmata: 'firmata',
+                'playground-io': 'firmata',
+                'bean-io': 'bean',
+                'particle-io': 'spark',
+                'tinker-io': 'spark',
+                'imp-io': 'imp'
+            };
+
+            function toggleBoardRows(type) {
+                const ioPlugin = boardToggles[type] || 'other';
+                boardRows.forEach(row => {
+                    $('#node-div-' + row + 'Row').hide();
+                    if (ioPlugin === row) {
+                        $('#node-div-' + row + 'Row').show();
+                    }
+                });
+                $('.plugin').hide();
+                $('.plugin.plugin-' + type).show();
+            }
+
+            const firmataRows = ['serial', 'mqtt', 'username', 'password', 'pub', 'sub', 'tcpHost', 'tcpPort', 'uuid', 'token', 'sendUuid'];
+            const firmataToggles = {
+                local: ['serial'],
+                mqtt: ['mqtt', 'username', 'password', 'pub', 'sub'],
+                tcp: ['tcpHost', 'tcpPort'],
+                tcplisten: ['tcpPort'],
+                udp: ['tcpHost', 'tcpPort']
+            };
+
+            function toggleFirmataOptions(type) {
+                const firmOpts = firmataToggles[type] || [];
+                firmataRows.forEach(row => {
+                    $('#node-div-' + row + 'Row').hide();
+                    firmOpts.forEach(firmOpt => {
+                        if (firmOpt === row) {
+                            $('#node-div-' + row + 'Row').show();
+                        }
+                    });
+                });
+            }
+
+            toggleBoardRows(self.ioPlugin);
+
+            try {
+                toggleFirmataOptions(self.connectionType);
+            } catch (exp) {}
+
+            const ioPluginInput = $('#node-config-input-ioPlugin');
+            ioPluginInput.change(function () {
+                // console.log('ioPluginInput changed', this.value);
+                toggleBoardRows(this.value);
+            });
+
+            const connectionTypeInput = $('#node-config-input-connectionType');
+            connectionTypeInput.change(function () {
+                // console.log('connectionTypeInput changed', this.value);
+                try {
+                    toggleFirmataOptions(this.value);
+                } catch (exp) {}
+            });
+
+            try {
+                $('#node-config-input-serialportName').autocomplete('destroy');
+            } catch (err) { }
+
+            $('#node-config-lookup-serial').click(() => {
+                $('#node-config-lookup-serial-icon').removeClass('fa-search');
+                $('#node-config-lookup-serial-icon').addClass('spinner');
+                $('#node-config-lookup-serial').addClass('disabled');
+
+                $.getJSON('johnny5/serialports', data => {
+                    $('#node-config-lookup-serial-icon').addClass('fa-search');
+                    $('#node-config-lookup-serial-icon').removeClass('spinner');
+                    $('#node-config-lookup-serial').removeClass('disabled');
+                    const ports = [];
+                    $.each(data, (i, port) => {
+                        ports.push(port);
+                    });
+                    $('#node-config-input-serialportName').autocomplete({
+                        source: ports,
+                        minLength: 0,
+                        close(event, ui) {
+                            $('#node-config-input-serialportName').autocomplete('destroy');
+                        }
+                    }).autocomplete('search', '');
+                });
+            });
+        },
+        oneditsave(a) {
+            const gpios = [];
+            $('.raspi-gpio').each(function () {
+                console.log($(this).attr('data-gpio'), $(this).is(':checked'));
+                if ($(this).is(':checked')) {
+                    gpios.push($(this).attr('data-gpio'));
+                }
+            });
+            this.raspiGPIO = gpios;
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="j5-platform">
+  <div class="form-row">
+    <label for="node-config-input-ioPlugin"><i class="fa fa-gears"></i> IO Plugin</label>
+    <select id="node-config-input-ioPlugin" style="width: 200px;">
+    </select>
+  </div>
+
+  <div class="form-row plugin plugin-firmata" id="node-div-firmataRow">
+    <div class="form-row" id="node-div-connectionTypeRow">
+      <label for="node-config-input-connectionType"><i class="fa fa-wrench"></i> Connection</label>
+      <select type="text" id="node-config-input-connectionType" style="width: 200px;">
+          <option value="local">Local Serial Port</option>
+          <option value="tcp">TCP Connect to</option>
+          <option value="tcplisten">TCP Listen on</option>
+          <option value="udp">UDP broadcast</option>
+          <option value="mqtt">MQTT</option>
+      </select>
+    </div>
+
+    <div class="form-row plugin plugin-firmata firmata-serial" id="node-div-serialRow">
+        <label for="node-config-input-serialportName"><i class="fa fa-random"></i> Port</label>
+        <input type="text" id="node-config-input-serialportName" style="width:60%;" placeholder="e.g. /dev/ttyUSB0  COM1"/>
+        <a id="node-config-lookup-serial" class="btn"><i id="node-config-lookup-serial-icon" class="fa fa-search"></i></a>
+    </div>
+    <div class="form-row plugin plugin-firmata firmata-tcp" id="node-div-tcpHostRow">
+      <label for="node-config-input-tcpHost"><i class="fa fa-globe"></i> TCP Host</label>
+      <input type="text" id="node-config-input-tcpHost">
+    </div>
+    <div class="form-row plugin plugin-firmata firmata-tcp" id="node-div-tcpPortRow">
+      <label for="node-config-input-tcpPort"><i class="fa fa-random"></i> TCP port</label>
+      <input type="text" id="node-config-input-tcpPort">
+    </div>
+    <div class="form-row plugin plugin-firmata firmata-mqtt" id="node-div-mqttRow">
+      <label for="node-config-input-mqttServer"><i class="fa fa-globe"></i>MQTT Server</label>
+      <input type="text" id="node-config-input-mqttServer" placeholder="mqtt://my_mqtt_server:1883">
+    </div>
+    <div class="form-row" id="node-div-uuidRow">
+      <label for="node-config-input-uuid"><i class="fa fa-globe"></i>UUID</label>
+      <input type="text" id="node-config-input-uuid" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+    </div>
+    <div class="form-row" id="node-div-tokenRow">
+      <label for="node-config-input-token"><i class="fa fa-globe"></i>token</label>
+      <input type="text" id="node-config-input-token" >
+    </div>
+    <div class="form-row" id="node-div-usernameRow">
+      <label for="node-config-input-username"><i class="fa fa-user"></i> username</label>
+      <input type="text" id="node-config-input-username">
+    </div>
+    <div class="form-row" id="node-div-passwordRow">
+      <label for="node-config-input-password"><i class="fa fa-lock"></i> password</label>
+      <input type="text" id="node-config-input-password">
+    </div>
+    <div class="form-row" id="node-div-sendUuidRow">
+      <label for="node-config-input-sendUuid"><i class="fa fa-globe"></i>send UUID</label>
+      <input type="text" id="node-config-input-sendUuid" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+    </div>
+    <div class="form-row plugin plugin-firmata firmata-mqtt" id="node-div-pubRow">
+        <label for="node-config-input-pubTopic"><i class="fa fa-tag"></i>Publish Topic</label>
+        <input type="text" id="node-config-input-pubTopic" placeholder="pubTopic">
+    </div>
+    <div class="form-row plugin plugin-firmata firmata-mqtt" id="node-div-subRow">
+        <label for="node-config-input-subTopic"><i class="fa fa-tag"></i>Subscribe Topic</label>
+        <input type="text" id="node-config-input-subTopic" placeholder="subTopic">
+    </div>
+  </div>
+  <div class="form-row plugin plugin-spark-io" id="node-div-sparkRow">
+    <div class="form-row">
+      <label for="node-config-input-sparkId"><i class="fa fa-user"></i> Device Id</label>
+      <input type="text" id="node-config-input-sparkId">
+    </div>
+    <div class="form-row plugin plugin-spark-io">
+      <label for="node-config-input-sparkToken"><i class="fa fa-lock"></i> Token</label>
+      <input type="text" id="node-config-input-sparkToken">
+    </div>
+  </div>
+  <div class="form-row plugin plugin-imp-io" id="node-div-impRow">
+    <div class="form-row">
+      <label for="node-config-input-impId"><i class="fa fa-user"></i> Agent Id</label>
+      <input type="text" id="node-config-input-impId">
+    </div>
+  </div>
+  <div class="form-row plugin plugin-bean-io" id="node-div-beanRow">
+    <div class="form-row">
+      <label for="node-config-input-beanId"><i class="fa fa-user"></i> UUID (optional)</label>
+      <input type="text" id="node-config-input-beanId">
+    </div>
+  </div>
+  <div class="form-row">
+      <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+      <input type="text" id="node-config-input-name" placeholder="Name">
+  </div>
+
+    <div class="form-row plugin plugin-raspi-io">
+        <label for="node-config-input-raspiI2C"><i class="fa fa-random"></i> I2C</label>
+        <input type="checkbox" id="node-config-input-raspiI2C">
+    </div>
+    <div class="form-row plugin plugin-raspi-io">
+        <label for="node-config-input-raspiUART"><i class="fa fa-random"></i> UART</label>
+        <input type="checkbox" id="node-config-input-raspiUART">
+    </div>
+
+    <style>
+        #gpios {
+            width: calc(70% - 100px);
+            display: inline-block;
+            margin: 0;
+        }
+        #gpios label {
+            display: inline;
+            margin-right: 8px;
+            white-space: nowrap;
+        }
+        #gpios label input {
+            width: auto;
+            margin-top: -2px;
+        }
+    </style>
+    <div class="form-row plugin plugin-raspi-io">
+        <label></label>
+        <table id="gpios">
+            <tr>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO2"/> GPIO2</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO3"> GPIO3</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO4"> GPIO4</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO5"> GPIO5</label></td>
+            </tr>
+            <tr>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO6"> GPIO6</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO7"> GPIO7</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO8"> GPIO8</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO9"> GPIO9</label></td>
+            </tr>
+            <tr>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO10"> GPIO10</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO11"> GPIO11</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO12"> GPIO12</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO13"> GPIO13</label></td>
+            </tr>
+            <tr>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO14"> GPIO14</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO15"> GPIO15</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO16"> GPIO16</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO17"> GPIO17</label></td>
+            </tr>
+            <tr>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO18"> GPIO18</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO18"> GPIO18</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO19"> GPIO19</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO20"> GPIO20</label></td>
+            </tr>
+            <tr>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO21"> GPIO21</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO22"> GPIO22</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO23"> GPIO23</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO24"> GPIO24</label></td>
+            </tr>
+            <tr>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO25"> GPIO25</label></td>
+                <td><label><input type="checkbox" class="raspi-gpio" data-gpio="GPIO26"> GPIO26</label></td>
+            </tr>
+        </table>
+    </div>
+
+
+</script>

@@ -1,0 +1,123 @@
+<script type="text/javascript">
+    RED.nodes.registerType('j5-function', {
+        color: '#E2D96E',
+        category: 'johnny-five',
+        defaults: {
+            name: {value: ''},
+            func: {value: ''},
+            board: {type: 'j5-platform', required: true},
+            noerr: {value: 0, required: true, validate(v) {
+                return Boolean((!v) || (v === 0));
+            }}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: 'j5-logo.png',
+        paletteLabel: 'script',
+        label() {
+            return this.name || 'script';
+        },
+        oneditprepare() {
+            const that = this;
+            $('#node-input-outputs').spinner({
+                min: 1
+            });
+
+            function functionDialogResize() {
+                const rows = $('#dialog-form>div:not(.node-text-editor-row)');
+                let height = $('#dialog-form').height();
+                for (let i = 0; i < rows.size(); i++) {
+                    height -= $(rows[i]).outerHeight(true);
+                }
+
+                const editorRow = $('#dialog-form>div.node-text-editor-row');
+                height -= (parseInt(editorRow.css('marginTop'), 10) + parseInt(editorRow.css('marginBottom'), 10));
+                $('.node-text-editor').css('height', height + 'px');
+                that.editor.resize();
+            }
+
+            $('#dialog').on('dialogresize', functionDialogResize);
+            $('#dialog').one('dialogopen', ev => {
+                const size = $('#dialog').dialog('option', 'sizeCache-function');
+                if (size) {
+                    $('#dialog').dialog('option', 'width', size.width);
+                    $('#dialog').dialog('option', 'height', size.height);
+                    functionDialogResize();
+                }
+            });
+            $('#dialog').one('dialogclose', (ev, ui) => {
+                const height = $('#dialog').dialog('option', 'height');
+                $('#dialog').off('dialogresize', functionDialogResize);
+            });
+
+            this.editor = RED.editor.createEditor({
+                id: 'node-input-func-editor',
+                mode: 'ace/mode/javascript',
+                value: $('#node-input-func').val()
+            });
+
+            this.editor.focus();
+        },
+        oneditsave() {
+            const annot = this.editor.getSession().getAnnotations();
+            this.noerr = 0;
+            $('#node-input-noerr').val(0);
+            for (let k = 0; k < annot.length; k++) {
+                //console.log(annot[k].type,":",annot[k].text, "on line", annot[k].row);
+                if (annot[k].type === 'error') {
+                    $('#node-input-noerr').val(annot.length);
+                    this.noerr = annot.length;
+                }
+            }
+
+            $('#node-input-func').val(this.editor.getValue());
+            delete this.editor;
+        }
+    });
+</script>
+
+
+
+
+<script type="text/x-red" data-template-name="j5-function">
+    <div class="form-row">
+        <label for="node-input-board"><i class="fa fa-tasks"></i> Board</label>
+        <input type="text" id="node-input-board">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> <span>name</span></label>
+        <input type="text" id="node-input-name">
+    </div>
+    <div class="form-row" style="margin-bottom: 0px;">
+        <label for="node-input-func"><i class="fa fa-wrench"></i> <span>onReady</span></label>
+        <input type="hidden" id="node-input-func" autofocus="autofocus">
+        <input type="hidden" id="node-input-noerr">
+    </div>
+    <div class="form-row node-text-editor-row">
+        <div style="height: 250px;" class="node-text-editor" id="node-input-func-editor" ></div>
+    </div>
+    <div class="form-tips"><span>See the Info tab for help writing johnny-five functions.</span></div>
+</script>
+
+<script type="text/x-red" data-help-name="j5-function">
+    <p>A function block where you can write code using the amazing <a target="_new" href="http://johnny-five.io">johnny-five</a> robotics library.</p>
+    <p>The function you write is what happens once the specified johnny-five board emits a 'ready' event.</p>
+    <p>Your script executes <strong>ONCE</strong> on deployment, <strong>NOT</strong> each time a message comes.</p>
+
+    <strong>Using johnny-five components</strong>
+    <p>The "board" and "five" variables are avaiable for use when creating johnny-five component instances such as:
+      <p><code>var led = new five.Led({pin: 13, board: board});</code></p>
+    </p>
+
+    <strong>Handling inputs and outputs</strong>
+    <p>You handle input and output messages to the node in your code with:
+      <p> <code>node.on("input", function(msg){ ... })</code> and <code>node.send({topic: "myTopic", payload: "myPayload"})</code></p>
+    </p>
+
+    <strong>Using other modules</strong>
+    <p>You have node require available to your scritps to do things such as:
+      <p> <code>var _ = require("lodash");</code></p>
+    </p>
+
+
+</script>

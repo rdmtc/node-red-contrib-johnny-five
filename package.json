@@ -1,6 +1,6 @@
 {
   "name": "node-red-contrib-johnny-five",
-  "version": "0.15.1",
+  "version": "1.0.0-beta.1",
   "description": "A set of node-red nodes for using johnny-five and IO plugins",
   "main": "gpio.js",
   "engines": {
@@ -26,11 +26,10 @@
     "ble",
     "ble-io"
   ],
-  "author": "Luis Montes",
+  "author": "Sebastian Raff <hobbyquaker@gmail.com>",
   "license": "MIT",
   "contributors": [
-    "Sebastian Raff <hobbyquaker@gmail.com>",
-    "Petapton https://github.com/Petapton"
+    "Luis Montes"
   ],
   "bugs": {
     "url": "https://github.com/rdmtc/node-red-contrib-johnny-five/issues"
@@ -49,7 +48,11 @@
   },
   "node-red": {
     "nodes": {
-      "gpio": "gpio.js"
+      "j5-platform": "nodes/j5-platform.js",
+      "j5-gpio-in": "nodes/j5-gpio-in.js",
+      "j5-gpio-out": "nodes/j5-gpio-out.js",
+      "j5-led": "nodes/j5-led.js",
+      "j5-function": "nodes/j5-function.js"
     }
   },
   "devDependencies": {

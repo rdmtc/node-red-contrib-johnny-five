@@ -1,0 +1,82 @@
+<script type="text/javascript">
+    RED.nodes.registerType('j5-gpio-in', {
+        category: 'johnny-five',
+        defaults: {
+            name: {value: ''},
+            state: {value: 'INPUT', required: true},
+            samplingInterval: {value: '300', required: false},
+            pin: {value: '', required: false},
+            platform: {type: 'j5-platform', required: true}
+        },
+        color: '#E2D96E',
+        inputs: 0,
+        outputs: 1,
+        icon: 'j5-logo.png',
+        paletteLabel: 'gpio in',
+        label() {
+            return this.name || (this.pin && this.pin.startsWith('GPIO') ? this.pin : 'Pin ' + this.pin);
+        },
+        oneditprepare() {
+            const self = this;
+
+            function showInterval() {
+                $('#node-div-samplingIntervalRow').show();
+            }
+
+            function hideInterval() {
+                $('#node-div-samplingIntervalRow').hide();
+            }
+
+            if (self.state === 'ANALOG') {
+                showInterval();
+            } else {
+                hideInterval();
+            }
+
+            const intervalInput = $('#node-input-state');
+            intervalInput.change(function () {
+                console.log('intervalInput changed', this.value);
+                if (this.value === 'ANALOG') {
+                    showInterval();
+                } else {
+                    hideInterval();
+                }
+            });
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="j5-gpio-in">
+    <div class="form-row">
+        <label for="node-input-platform"><i class="fa fa-tasks"></i> Platform</label>
+        <input type="text" id="node-input-platform">
+    </div>
+    <div class="form-row">
+        <label for="node-input-state"><i class="fa fa-wrench"></i> Type</label>
+        <select type="text" id="node-input-state" style="width: 150px;">
+            <option value="INPUT">Digital pin</option>
+            <option value="PULLUP">Digital pin (pullup)</option>
+            <option value="ANALOG">Analogue pin</option>
+        </select>
+    </div>
+    <div class="form-row"  id="node-div-samplingIntervalRow">
+        <label for="node-input-samplingInterval"><i class="fa fa-circle"></i> Sampling Interval</label>
+        <input type="text" id="node-input-samplingInterval" placeholder="300">
+    </div>
+    <div class="form-row"  id="node-div-pinRow">
+        <label for="node-input-pin"><i class="fa fa-circle"></i> Pin</label>
+        <input type="text" id="node-input-pin" placeholder="2">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-tips" id="node-div-formTipRow"><b>Note:</b> You cannot use the same pin for both output and input.</div>
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="j5-gpio-in">
+  <p>gpio input node. A node for receiving data from General Purpose Input and Outputs (GPIOs) pins though the use of johnny-five I/O Plugins</p>
+</script>
+
+
