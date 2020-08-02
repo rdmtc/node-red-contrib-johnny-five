@@ -1,10 +1,10 @@
 {
   "name": "node-red-contrib-johnny-five",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "description": "A set of node-red nodes for using johnny-five and IO plugins",
   "main": "gpio.js",
   "engines": {
-    "node": ">=8.0.0"
+    "node": ">=10.0.0"
   },
   "repository": {
     "type": "git",
@@ -36,13 +36,13 @@
   },
   "homepage": "https://github.com/rdmtc/node-red-contrib-johnny-five",
   "dependencies": {
-    "firmata": "^2.0.0",
-    "johnny-five": "^1.1.0",
-    "lodash": "^4.17.5",
-    "mqtt": "^2.15.2",
+    "firmata": "^2.2.0",
+    "johnny-five": "^2.0.0",
+    "lodash": "^4.17.19",
+    "mqtt": "^4.1.0",
     "mqtt-serial": "^0.6.0",
     "node-led": "^0.3.1",
-    "serialport": "^7.1.5",
+    "serialport": "^9.0.0",
     "socket.io-serial": "^0.4.0",
     "udp-serial": "^0.2.0"
   },
@@ -56,8 +56,8 @@
     }
   },
   "devDependencies": {
-    "eslint-plugin-html": "^5.0.3",
-    "xo": "^0.24.0"
+    "eslint-plugin-html": "^6.0.2",
+    "xo": "^0.32.1"
   },
   "scripts": {
     "test": "xo",
